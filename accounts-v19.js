@@ -22,7 +22,8 @@ const moneyBalance=(a,d)=>Number(a.opening||0)+(d.tx||[]).reduce((s,t)=>s+(t.to=
 const all=()=>store.get();
 const safeArr=(d,k)=>Array.isArray(d[k])?d[k]:[];
 function render(){const d=all(),accounts=safeArr(d,'accounts'),tx=safeArr(d,'tx'),sources=safeArr(d,'incomeSources'),assets=safeArr(d,'assetsDetailed'),debts=safeArr(d,'debts');
-if(sourceSelect){const selected=sourceSelect.value;sourceSelect.innerHTML='<option value="">Sin clasificar / elegir más tarde</option>'+sources.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+' · '+esc(sourceNames[x.kind]||'Otro')+'</option>').join('');if(sources.some(x=>x.id===selected))sourceSelect.value=selected;}\nconst accountRows=accounts.map(a=>{const m=meta[a.id]||{},value=moneyBalance(a,d);return {a,m,value,available:m.available!==false&&a.kind!=='investment'}});
+if(sourceSelect){const selected=sourceSelect.value;sourceSelect.innerHTML='<option value="">Sin clasificar / elegir más tarde</option>'+sources.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+' · '+esc(sourceNames[x.kind]||'Otro')+'</option>').join('');if(sources.some(x=>x.id===selected))sourceSelect.value=selected;}
+const accountRows=accounts.map(a=>{const m=meta[a.id]||{},value=moneyBalance(a,d);return {a,m,value,available:m.available!==false&&a.kind!=='investment'}});
 const available=accountRows.filter(x=>x.available).reduce((s,x)=>s+x.value,0),restricted=accountRows.filter(x=>!x.available).reduce((s,x)=>s+x.value,0);
 const acctTotal=available+restricted,assetTotal=assets.reduce((s,a)=>s+Number(a.value||0),0),debtTotal=debts.reduce((s,a)=>s+Number(a.balance||0),0);
 root.querySelectorAll('[data-sa19-tab]').forEach(b=>{b.classList.toggle('active',b.dataset.sa19Tab===tab);b.setAttribute('aria-selected',String(b.dataset.sa19Tab===tab))});
