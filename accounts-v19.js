@@ -12,6 +12,9 @@ const meta=savedMeta();const legacy=document.createElement('div');legacy.id='sal
 const root=document.createElement('div');root.id='salvia-accounts-v19';host.insertBefore(root,legacy);
 root.innerHTML='<div class="sa19-head"><div><span class="sa19-kicker">MI DINERO Y PATRIMONIO</span><h2>Conoce de dónde viene y dónde está tu dinero.</h2><p>Cuentas, fuentes de ingresos, inversiones y deudas conectadas en un mismo perfil.</p></div></div><div class="sa19-tabs" role="tablist" aria-label="Cuentas y patrimonio"><button type="button" class="sa19-tab active" data-sa19-tab="money">Mi dinero</button><button type="button" class="sa19-tab" data-sa19-tab="income">Mis ingresos</button><button type="button" class="sa19-tab" data-sa19-tab="assets">Inversiones y bienes</button><button type="button" class="sa19-tab" data-sa19-tab="net">Patrimonio neto</button></div><div id="sa19-content"></div>';
 const content=root.querySelector('#sa19-content');let tab='money';
+const txForm=document.getElementById('txForm'),txType=document.getElementById('txType');let sourceSelect=null;
+if(txForm){const label=document.createElement('label');label.id='sa19-source-wrap';label.textContent='Fuente del ingreso (opcional)';sourceSelect=document.createElement('select');sourceSelect.name='incomeSource';label.appendChild(sourceSelect);const category=document.getElementById('catWrap');if(category)category.insertAdjacentElement('afterend',label);else txForm.appendChild(label);const toggle=()=>{label.hidden=txType?.value!=='income'};txType?.addEventListener('change',toggle);toggle()}
+
 const card=(title,value,note)=>'<div class="sa19-metric"><small>'+title+'</small><strong>'+value+'</strong><span>'+note+'</span></div>';
 const list=(rows,empty)=>rows.length?rows.join(''):'<p class="sa19-empty">'+empty+'</p>';
 const button=(route,label)=>'<button type="button" class="sa19-link" data-sa19-route="'+route+'">'+label+' ↗</button>';
@@ -19,7 +22,7 @@ const moneyBalance=(a,d)=>Number(a.opening||0)+(d.tx||[]).reduce((s,t)=>s+(t.to=
 const all=()=>store.get();
 const safeArr=(d,k)=>Array.isArray(d[k])?d[k]:[];
 function render(){const d=all(),accounts=safeArr(d,'accounts'),tx=safeArr(d,'tx'),sources=safeArr(d,'incomeSources'),assets=safeArr(d,'assetsDetailed'),debts=safeArr(d,'debts');
-const accountRows=accounts.map(a=>{const m=meta[a.id]||{},value=moneyBalance(a,d);return {a,m,value,available:m.available!==false&&a.kind!=='investment'}});
+if(sourceSelect){const selected=sourceSelect.value;sourceSelect.innerHTML='<option value="">Sin clasificar / elegir más tarde</option>'+sources.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+' · '+esc(sourceNames[x.kind]||'Otro')+'</option>').join('');if(sources.some(x=>x.id===selected))sourceSelect.value=selected;}\nconst accountRows=accounts.map(a=>{const m=meta[a.id]||{},value=moneyBalance(a,d);return {a,m,value,available:m.available!==false&&a.kind!=='investment'}});
 const available=accountRows.filter(x=>x.available).reduce((s,x)=>s+x.value,0),restricted=accountRows.filter(x=>!x.available).reduce((s,x)=>s+x.value,0);
 const acctTotal=available+restricted,assetTotal=assets.reduce((s,a)=>s+Number(a.value||0),0),debtTotal=debts.reduce((s,a)=>s+Number(a.balance||0),0);
 root.querySelectorAll('[data-sa19-tab]').forEach(b=>{b.classList.toggle('active',b.dataset.sa19Tab===tab);b.setAttribute('aria-selected',String(b.dataset.sa19Tab===tab))});
