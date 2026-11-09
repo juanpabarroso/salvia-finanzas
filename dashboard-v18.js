@@ -34,22 +34,22 @@ const first=new Date(r.due+'T12:00:00');if(Number.isNaN(first.getTime()))return 
 const freq={monthly:1,quarterly:3,yearly:12}[r.frequency];const result=[];
 if(!freq){if(r.due>=todayIso&&r.due<=untilIso)result.push({date:r.due,amount:safe(r.amount)});return result}
 const anchorDay=first.getDate();for(let k=0;k<300;k++){const d=new Date(first.getFullYear(),first.getMonth()+k*freq,1,12);const max=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(anchorDay,max));const iso=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');if(iso>untilIso)break;if(iso>=todayIso)result.push({date:iso,amount:safe(r.amount)})}return result};
-const payments=rec.flatMap(occurrences),paymentsTotal=payments.reduce((s,p)=>s+p.amount,0);
-const hasPayments=rec.some(r=>safe(r.amount)>0&&r.due);
+const oneOff=(Array.isArray(d.plannedPayments)?d.plannedPayments:[]).filter(p=>p.due>=todayIso&&p.due<=untilIso&&safe(p.amount)>0).map(p=>({date:p.due,amount:safe(p.amount)}));const debtPayments=(Array.isArray(d.debts)?d.debts:[]).filter(p=>safe(p.payment)>0).flatMap(p=>occurrences({due:p.due,amount:p.payment,frequency:p.frequency==='once'?'single':p.frequency}));const payments=[...rec.flatMap(occurrences),...oneOff,...debtPayments],paymentsTotal=payments.reduce((s,p)=>s+p.amount,0);
+const hasPayments=payments.length>0;
 const hasResult=hasMovement;
 const hasForecast=hasPlan;
 const ready=[configured,hasResult,hasPayments,hasForecast],count=ready.filter(Boolean).length;
 const attention=[];
 if(!configured)attention.push(['Configura tu dinero disponible','Confirma tus cuentas y saldos para empezar.','accounts']);
 if(!hasMovement)attention.push(['Completa tus movimientos','Registra ingresos y gastos para conocer el resultado del mes.','movements']);
-if(!hasPayments)attention.push(['Añade pagos previstos','Registra los gastos periódicos que conozcas para anticipar vencimientos.','recurring']);
+if(!hasPayments)attention.push(['Añade pagos previstos','Añade gastos habituales, deudas o pagos puntuales con fecha conocida.','recurring']);
 if(!hasIncome)attention.push(['Configura ingresos','Añade tus cobros habituales para preparar una proyección.','planning']);
 if(configured&&hasMovement&&monthlyOut>monthlyIn)attention.unshift(['Revisa tu resultado','Tus gastos registrados superan los ingresos registrados del mes; comprueba si faltan movimientos.','movements']);
 const label='<div class="sd17-head"><div><span class="sd17-eyebrow">MI ECONOMÍA</span><h2>Tu dinero, con perspectiva.</h2><p>Lo esencial de hoy y lo que puedes anticipar. Cada cifra procede de los datos que registras.</p></div><div class="sd17-progress"><strong>'+count+' de 4</strong><span>indicadores con información</span><div class="sd17-track"><i style="width:'+(25*count)+'%"></i></div></div></div>';
 const cards='<div class="sd17-grid sd18-grid">'+
 tile('Dinero disponible',money(liquid),'Saldos registrados en cuentas y efectivo; no incluye inversiones ni equivale a saldo bancario conciliado.','accounts',configured,'cuentas y saldos')+
 tile('Resultado del mes',money(monthlyIn-monthlyOut),'Ingresos '+money(monthlyIn)+' · Gastos '+money(monthlyOut)+'. Solo movimientos registrados.','movements',hasResult,'ingresos y gastos')+
-tile('Pagos próximos 30 días',money(paymentsTotal),'Importe de pagos periódicos con fecha e importe registrados. No incluye pagos puntuales ni préstamos aún sin modelar.','recurring',hasPayments,'pagos periódicos')+
+tile('Pagos próximos 30 días',money(paymentsTotal),'Suma de gastos habituales, cuotas de deudas y pagos puntuales con vencimiento en los próximos 30 días. Evita duplicar el mismo pago.','recurring',hasPayments,'pagos previstos')+
 tile('Liquidez prevista','Consultar escenario','La previsión numérica se calcula en Plan financiero; no se muestra aquí sin un resultado validado.','planning',hasForecast,'saldos, ingresos y gastos previstos')+'</div>';
 const goalPanel=goal?'<div class="sd18-goal"><strong>Tu objetivo de ahorro</strong><p>'+money(goalCurrent)+' de '+money(goalTarget)+' registrados.</p><button type="button" data-sd17-go="goals">Ver objetivo ↗</button></div>':'';
 const summary='<section class="sd18-forecast"><div><span class="sd17-eyebrow">EVOLUCIÓN DE LIQUIDEZ</span><h3>Planifica los próximos meses</h3><p>Consulta el gráfico y los escenarios en Plan financiero. Las estimaciones se calculan allí con sus hipótesis; no inventamos una curva a partir de datos incompletos.</p></div><button type="button" data-sd17-go="planning">Ver evolución y escenarios ↗</button></section>';
