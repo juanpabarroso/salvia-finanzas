@@ -1,0 +1,23 @@
+name: Salvia financial integrity and browser smoke
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static integration and financial reconciliation
+        run: |
+          node --test tests/integration-static.test.cjs tests/financial-integrity.test.cjs
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Desktop and mobile browser smoke
+        run: node tests/browser-smoke.mjs
