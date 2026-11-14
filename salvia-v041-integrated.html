@@ -9,7 +9,7 @@ const sources=(c.incomeSources||[]).map(s=>s.v41Data?structuredClone(s.v41Data):
 const receipts=[],expenses=[],transfers=[];
 for(const t of c.tx||[]){
  if(t.type==='income')receipts.push({id:t.id,source:t.incomeSourceId||null,category:t.v41Category||'other',account:t.to||t.account||'',date:t.date,amount:Number(t.amount)||0,kind:t.v41Kind|| (t.incomeSourceId?'regular':'extra'),registration:t.v41Registration||null,occurrence:t.v41Occurrence||t.periodKey||null,concept:t.concept||''});
- else if(t.type==='expense')expenses.push({id:t.id,account:t.from||t.account||'',date:t.date,amount:Number(t.amount)||0,concept:t.concept||''});
+ else if(t.type==='expense')expenses.push({id:t.id,account:t.from||t.account||'',date:t.date,amount:Number(t.amount)||0,concept:t.concept||'',debtPaymentId:t.salviaDebtPaymentId||null,principalPaid:t.salviaPrincipalPaid??null,interestPaid:t.salviaInterestPaid??null});
  else if(t.type==='transfer')transfers.push({id:t.id,from:t.from,to:t.to,date:t.date,amount:Number(t.amount)||0,concept:t.concept||''});
 }
 return {schema:40,accounts,sources,receipts,expenses,transfers,suppressedOccurrences:Array.isArray(c.salviaSuppressedOccurrences)?c.salviaSuppressedOccurrences:[],assets:(c.assetsDetailed||[]).map(a=>({id:a.id,name:a.name,kind:a.kind==='investment'?'investment':'property',assetType:a.salviaAssetType|| (a.kind==='vehicle'?'vehicle':a.kind==='property'?'property':'other'),ownership:a.salviaOwnership??100,valuationDate:a.salviaValuationDate||null,linkedDebtId:a.salviaLinkedDebtId||null,value:Number(a.value)||0})),debts:(c.debts||[]).map(a=>({id:a.id,name:a.name,balance:Number(a.balance)||0,debtType:a.salviaDebtType||'other',payment:a.salviaPayment??null,frequency:a.salviaFrequency||'monthly',rate:a.salviaRate??null,endDate:a.salviaEndDate||null,linkedAssetId:a.salviaLinkedAssetId||null,paymentDay:a.salviaPaymentDay??null})),checks:[]};
@@ -23,7 +23,7 @@ c.incomeSources=s.sources.map(x=>({...sc.get(x.id),id:x.id,name:x.name,kind:({re
 const old=new Map((c.tx||[]).map(x=>[x.id,x]));
 const keep=(c.tx||[]).filter(x=>!['income','expense','transfer'].includes(x.type));
 const incomes=s.receipts.map(r=>({...old.get(r.id),id:r.id,type:'income',to:r.account,from:null,amount:Number(r.amount)||0,date:r.date,concept:r.concept,category:old.get(r.id)?.category||'Otros',incomeSourceId:r.source||null,v41Category:r.category||null,v41Kind:r.kind,v41Registration:r.registration||null,v41Occurrence:r.occurrence||null,periodKey:r.occurrence||null}));
-const costs=s.expenses.map(x=>({...old.get(x.id),id:x.id,type:'expense',from:x.account,to:null,amount:Number(x.amount)||0,date:x.date,concept:x.concept,category:old.get(x.id)?.category||'Otros'}));
+const costs=s.expenses.map(x=>({...old.get(x.id),id:x.id,type:'expense',from:x.account,to:null,amount:Number(x.amount)||0,date:x.date,concept:x.concept,category:old.get(x.id)?.category||'Otros',salviaDebtPaymentId:x.debtPaymentId||null,salviaPrincipalPaid:x.principalPaid??null,salviaInterestPaid:x.interestPaid??null}));
 const moves=s.transfers.map(x=>({...old.get(x.id),id:x.id,type:'transfer',from:x.from,to:x.to,amount:Number(x.amount)||0,date:x.date,concept:x.concept}));
 c.tx=[...keep,...incomes,...costs,...moves];c.salviaSuppressedOccurrences=[...(s.suppressedOccurrences||[])];
 const oldAssets=new Map((c.assetsDetailed||[]).map(x=>[x.id,x]));
