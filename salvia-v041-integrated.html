@@ -12,7 +12,7 @@ for(const t of c.tx||[]){
  else if(t.type==='expense')expenses.push({id:t.id,account:t.from||t.account||'',date:t.date,amount:Number(t.amount)||0,concept:t.concept||''});
  else if(t.type==='transfer')transfers.push({id:t.id,from:t.from,to:t.to,date:t.date,amount:Number(t.amount)||0,concept:t.concept||''});
 }
-return {schema:40,accounts,sources,receipts,expenses,transfers,suppressedOccurrences:Array.isArray(c.salviaSuppressedOccurrences)?c.salviaSuppressedOccurrences:[],assets:(c.assetsDetailed||[]).map(a=>({id:a.id,name:a.name,kind:a.kind==='property'||a.kind==='vehicle'?'property':'investment',value:Number(a.value)||0})),debts:(c.debts||[]).map(a=>({id:a.id,name:a.name,balance:Number(a.balance)||0})),checks:[]};
+return {schema:40,accounts,sources,receipts,expenses,transfers,suppressedOccurrences:Array.isArray(c.salviaSuppressedOccurrences)?c.salviaSuppressedOccurrences:[],assets:(c.assetsDetailed||[]).map(a=>({id:a.id,name:a.name,kind:a.kind==='investment'?'investment':'property',assetType:a.salviaAssetType|| (a.kind==='vehicle'?'vehicle':a.kind==='property'?'property':'other'),ownership:a.salviaOwnership??100,valuationDate:a.salviaValuationDate||null,linkedDebtId:a.salviaLinkedDebtId||null,value:Number(a.value)||0})),debts:(c.debts||[]).map(a=>({id:a.id,name:a.name,balance:Number(a.balance)||0,debtType:a.salviaDebtType||'other',payment:a.salviaPayment??null,frequency:a.salviaFrequency||'monthly',rate:a.salviaRate??null,endDate:a.salviaEndDate||null,linkedAssetId:a.salviaLinkedAssetId||null,paymentDay:a.salviaPaymentDay??null})),checks:[]};
 }
 function sv41ToCanonical(s){
 const api=window.parent?.salviaStore;if(!api)return;
@@ -27,8 +27,8 @@ const costs=s.expenses.map(x=>({...old.get(x.id),id:x.id,type:'expense',from:x.a
 const moves=s.transfers.map(x=>({...old.get(x.id),id:x.id,type:'transfer',from:x.from,to:x.to,amount:Number(x.amount)||0,date:x.date,concept:x.concept}));
 c.tx=[...keep,...incomes,...costs,...moves];c.salviaSuppressedOccurrences=[...(s.suppressedOccurrences||[])];
 const oldAssets=new Map((c.assetsDetailed||[]).map(x=>[x.id,x]));
-c.assetsDetailed=s.assets.map(x=>({...oldAssets.get(x.id),id:x.id,name:x.name,kind:x.kind,value:Number(x.value)||0}));
-c.debts=s.debts.map(x=>({id:x.id,name:x.name,balance:Number(x.balance)||0}));
+c.assetsDetailed=s.assets.map(x=>({...oldAssets.get(x.id),id:x.id,name:x.name,kind:x.kind==='investment'?'investment':x.assetType==='vehicle'?'vehicle':x.assetType==='property'?'property':'other',salviaAssetType:x.assetType||null,salviaOwnership:x.ownership??100,salviaValuationDate:x.valuationDate||null,salviaLinkedDebtId:x.linkedDebtId||null,value:Number(x.value)||0}));
+c.debts=s.debts.map(x=>({...((c.debts||[]).find(d=>d.id===x.id)||{}),id:x.id,name:x.name,balance:Number(x.balance)||0,salviaDebtType:x.debtType||'other',salviaPayment:x.payment??null,salviaFrequency:x.frequency||'monthly',salviaRate:x.rate??null,salviaEndDate:x.endDate||null,salviaLinkedAssetId:x.linkedAssetId||null,salviaPaymentDay:x.paymentDay??null}));
 api.save();
 }
 
