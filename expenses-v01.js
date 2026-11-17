@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const store=window.salviaStore,host=document.getElementById('movements');if(!store||!host)return;
+const store=window.salviaStore,host=document.getElementById('salvia-expenses-app');if(!store||!host)return;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 const euro=v=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(v)||0);
 const categories=['Vivienda','Alimentación','Transporte','Salud','Ocio','Deporte','Compras','Suscripciones','Familia y hogar','Financiación','Seguros','Impuestos','Regalos y ayudas','Otros'];
