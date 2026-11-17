@@ -3,7 +3,7 @@ const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const BASE=process.env.SALVIA_TEST_URL||'http://127.0.0.1:8765';
 async function enterWorkspace(page){if(await page.locator('body.s-welcome').count())await page.locator('[data-welcome-go="dashboard"]').click()}
-async function navigate(page,id){const link=page.locator('#nav [data-route="'+id+'"]');await link.waitFor({state:'attached'});if(!await link.isVisible()){const group=link.locator('xpath=ancestor::div[contains(@class,"s-group")]');if(await group.count()){const toggle=group.locator('.s-group-toggle');if(await toggle.isVisible())await toggle.click()}}if(!await link.isVisible())throw Error('Navigation link hidden after expanding group: '+id);await link.click()}
+async function navigate(page,id){const link=page.locator('#nav [data-route="'+id+'"]').first();await link.waitFor({state:'attached'});if(!await link.isVisible()){const group=link.locator('xpath=ancestor::div[contains(@class,"s-group")]');if(await group.count()){const toggle=group.locator('.s-group-toggle');if(await toggle.isVisible())await toggle.click()}}if(!await link.isVisible())throw Error('Navigation link hidden after expanding group: '+id);await link.click()}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
