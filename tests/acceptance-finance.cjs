@@ -32,7 +32,7 @@ assert.equal(december.pendingExpense,800);
 assert.equal(december.pending.filter(x=>x.source==='debt')[0].amount,760);
 assert.equal(december.pending.some(x=>x.concept.includes('Familiar')),false);
 const sameDay=copy(data);sameDay.recurring.push({id:'other',concept:'Otro pago',due:'2026-01-05',frequency:'monthly',amount:760});assert.equal(finance.forecastMonth(sameDay,2026,12).pendingExpense,1560);
-const dup=copy(data);dup.tx.push({...dup.tx[0],id:'duplicate'});assert(finance.reconciliationReport(dup).warnings.some(x=>x.code==='duplicate_occurrence'));assert.equal(finance.forecastMonth(dup,2026,11).realExpense,740);
+const dup=copy(data);dup.tx.push({...dup.tx.find(t=>t.id==='mort-nov'),id:'duplicate'});assert(finance.reconciliationReport(dup).warnings.some(x=>x.code==='duplicate_occurrence'));assert.equal(finance.forecastMonth(dup,2026,11).realExpense,740);
 for(const payout of [12,17]){const result=finance.monthlyPlan(data,{start:'2027-01',cash:3000,annual:20400,payout,extraMonths:[3,6,6,7,11]});assert(Math.abs(result.rows.reduce((sum,row)=>sum+row.income,0)-20400)<0.01)}
 const partial=finance.monthlyPlan(data,{start:'2026-11',cash:3000,annual:20400,payout:12});assert.equal(partial.rows[0].income,1200);assert.equal(partial.rows[0].partialIncomeRisk,true);
 const cancelled=copy(data);cancelled.tx=cancelled.tx.filter(t=>t.id!=='mort-nov');cancelled.salviaSuppressedDebtOccurrences.push('mort:2026-11');assert.equal(finance.forecastMonth(cancelled,2026,11).pending.some(x=>x.source==='debt'),false);
