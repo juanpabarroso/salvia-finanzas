@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const BASE=process.env.SALVIA_TEST_URL||'http://127.0.0.1:8765';
-const wait=ms=>new Promise(r=>setTimeout(r,ms));
+// Acceptance branch: run browser regression before phase-2 signoff.
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
