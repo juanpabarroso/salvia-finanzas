@@ -36,4 +36,19 @@ const dup=copy(data);dup.tx.push({...dup.tx.find(t=>t.id==='mort-nov'),id:'dupli
 for(const payout of [12,17]){const result=finance.monthlyPlan(data,{start:'2027-01',cash:3000,annual:20400,payout,extraMonths:[3,6,6,7,11]});assert(Math.abs(result.rows.reduce((sum,row)=>sum+row.income,0)-20400)<0.01)}
 const partial=finance.monthlyPlan(data,{start:'2026-11',cash:3000,annual:20400,payout:12});assert.equal(partial.rows[0].income,1200);assert.equal(partial.rows[0].partialIncomeRisk,true);
 const cancelled=copy(data);cancelled.tx=cancelled.tx.filter(t=>t.id!=='mort-nov');cancelled.salviaSuppressedDebtOccurrences.push('mort:2026-11');assert.equal(finance.forecastMonth(cancelled,2026,11).pending.some(x=>x.source==='debt'),false);
+// Repeated bridge writes must preserve corrected movements and suppression markers.
+const corrected=copy(data);
+corrected.tx.find(t=>t.id==='gym-nov').amount=35;
+corrected.tx.find(t=>t.id==='gym-nov').concept='Gimnasio corregido';
+corrected.salviaSuppressedExpenseOccurrences.push('recurring:gym:2026-12');
+const correctedStore={get:()=>corrected,save:()=>{}};
+const correctedCtx=vm.createContext({window:{parent:{salviaStore:correctedStore}},structuredClone:global.structuredClone});
+vm.runInContext(bridgeCode,correctedCtx);
+for(let i=0;i<3;i++)correctedCtx.sv41ToCanonical(correctedCtx.sv41FromCanonical(corrected));
+assert.equal(corrected.tx.filter(t=>t.id==='gym-nov').length,1);
+assert.equal(corrected.tx.find(t=>t.id==='gym-nov').amount,35);
+assert.equal(corrected.tx.find(t=>t.id==='gym-nov').concept,'Gimnasio corregido');
+assert.equal(corrected.salviaSuppressedExpenseOccurrences.includes('recurring:gym:2026-12'),true);
+assert.equal(finance.forecastMonth(corrected,2026,11).realExpense,735);
+assert.equal(finance.forecastMonth(corrected,2026,12).pending.some(x=>x.source==='recurring'),false);
 console.log('PASS: patrimonio roundtrip, income/expense provenance, duplicate prevention, debt revisions, salary distribution, partial receipts and cancellation suppression');
