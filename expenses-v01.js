@@ -2,7 +2,7 @@
 const store=window.salviaStore,host=document.getElementById('salvia-expenses-app');if(!store||!host)return;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 const euro=v=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(v)||0);
-const categories=['Vivienda','Alimentación','Transporte','Salud','Ocio','Deporte','Compras','Suscripciones','Familia y hogar','Financiación','Seguros','Impuestos','Regalos y ayudas','Otros'];
+const categories=['Vivienda','Alimentación','Transporte','Salud','Ocio','Deporte','Compras','Suscripciones','Familia y hogar','Financiación','Inversiones','Seguros','Impuestos','Regalos y ayudas','Otros'];
 const rules=[[/gasolin|combustible|repostaje/i,'Transporte'],[/supermerc|mercadona|carrefour|lidl|aliment/i,'Alimentación'],[/restaurante|bar |cafeter|comida/i,'Alimentación'],[/netflix|spotify|suscrip|amazon prime/i,'Suscripciones'],[/farmac|médic|dentist/i,'Salud'],[/hipoteca|préstamo|cuota de |crédito/i,'Financiación'],[/seguro/i,'Seguros'],[/alquiler|luz|electricidad|agua|gas natural/i,'Vivienda']];
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const validDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s))&&!Number.isNaN(Date.parse(s+'T12:00:00'));
@@ -15,7 +15,7 @@ function bounds(shift=0){const n=periodStep[frequency],m=Math.floor(anchor.getMo
 function inRange(t,start,end){return validDate(t.date)&&toDate(t.date)>=start&&toDate(t.date)<end}
 function label(start){const y=start.getFullYear(),m=start.getMonth();return frequency==='monthly'?start.toLocaleDateString('es-ES',{month:'long',year:'numeric'}):frequency==='quarterly'?'T'+(Math.floor(m/3)+1)+' '+y:frequency==='semiannual'?'S'+(Math.floor(m/6)+1)+' '+y:String(y)}
 function expenses(d){return (d.tx||[]).filter(x=>x.type==='expense'&&!x.salviaVoided)}
-function category(x){return categories.includes(x.category)?x.category:(x.salviaDebtPaymentId?'Financiación':'Otros')}
+function category(x){if(x.salviaInvestmentId)return 'Inversiones';if(x.salviaDebtPaymentId)return 'Financiación';if(x.category==='Préstamos')return 'Financiación';return categories.includes(x.category)?x.category:'Otros'}
 function totals(d,start,end){return expenses(d).filter(x=>inRange(x,start,end)).reduce((s,x)=>s+Number(x.amount||0),0)}
 function syncRecurring(){const d=store.get(),now=today();let changed=false;d.salviaSuppressedExpenseOccurrences||=[];
  for(const r of d.recurring||[]){if(!r.salviaAutoEnabled||!validDate(r.due)||!Number.isFinite(+r.amount)||+r.amount<=0)continue;
