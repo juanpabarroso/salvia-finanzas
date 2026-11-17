@@ -58,7 +58,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const calendarCheck=await page.evaluate(()=>{const m=new Date(),period=m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');document.getElementById('calMonth').value=period;document.getElementById('calMonth').dispatchEvent(new Event('change',{bubbles:true}));return {expected:window.SalviaFinance.forecastMonth(window.salviaStore.get(),m.getFullYear(),m.getMonth()+1),display:document.getElementById('calStats').textContent}});
   assert.equal(calendarCheck.expected.realExpense,0,'cancelled rent excluded from forecast');
   assert.equal(calendarCheck.expected.realIncome,1500,'salary appears exactly once');
-  assert(calendarCheck.display.includes('1.500'),'calendar displays registered income');
+  assert(calendarCheck.display.includes(new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(1500)),'calendar displays registered income');
   await page.locator('[data-route="planning"]').click();
   await page.locator('[data-plan-open="planning-detail"]').click();
   assert.equal(await page.locator('#planning').evaluate(el=>el.classList.contains('active')),true,'financial plan route');
