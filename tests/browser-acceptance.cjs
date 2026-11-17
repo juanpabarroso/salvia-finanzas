@@ -2,6 +2,7 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const BASE=process.env.SALVIA_TEST_URL||'http://127.0.0.1:8765';
+async function enterWorkspace(page){if(await page.locator('body.s-welcome').count())await page.locator('[data-welcome-go="dashboard"]').click()}
 async function navigate(page,id){const link=page.locator('[data-route="'+id+'"]');await link.waitFor({state:'attached'});if(!await link.isVisible()){const group=link.locator('xpath=ancestor::div[contains(@class,"s-group")]');if(await group.count()){const toggle=group.locator('.s-group-toggle');if(await toggle.isVisible())await toggle.click()}}if(!await link.isVisible())throw Error('Navigation link hidden after expanding group: '+id);await link.click()}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
@@ -22,6 +23,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     window.salviaStore.replace(d);
   });
   await page.reload({waitUntil:'domcontentloaded'});
+  await enterWorkspace(page);
   await navigate(page,'movements');
   await page.waitForSelector('#sg-add');
   const saved=await page.evaluate(()=>window.salviaStore.get());
@@ -32,6 +34,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await page.locator('#sg-form button[type="submit"]').click();
   assert.equal(await page.evaluate(()=>window.salviaStore.get().tx.find(t=>t.id==='rent').amount),350,'expense correction persisted');
   await page.reload({waitUntil:'domcontentloaded'});
+  await enterWorkspace(page);
   assert.equal(await page.evaluate(()=>window.salviaStore.get().tx.find(t=>t.id==='rent').amount),350,'correction survives reload');
   await page.locator('[data-route="movements"]').click();
   await page.locator('[data-sg-edit="rent"]').click();
@@ -63,6 +66,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await page.close();
   const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   await mobile.goto(BASE,{waitUntil:'domcontentloaded'});
+  await enterWorkspace(mobile);
   await mobile.locator('.s-mobile').click();
   await navigate(mobile,'planning');
   assert.equal(await mobile.locator('#planning-hub').evaluate(el=>el.classList.contains('active')),true,'mobile planning route');
