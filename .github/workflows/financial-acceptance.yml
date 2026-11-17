@@ -15,7 +15,11 @@ on:
     paths:
       - 'finance-core-v14.js'
       - 'salvia-patrimonio-v052.html'
-      - 'tests/acceptance-finance.cjs'
+      - 'tests/**'
+      - 'index.html'
+      - 'navigation-v06.js'
+      - 'expenses-v01.js'
+      - 'accounts-v041-shell.js'
       - '.github/workflows/financial-acceptance.yml'
   workflow_dispatch:
 jobs:
