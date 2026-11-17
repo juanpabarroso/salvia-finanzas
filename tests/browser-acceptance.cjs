@@ -59,7 +59,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   assert.equal(calendarCheck.expected.realExpense,0,'cancelled rent excluded from forecast');
   assert.equal(calendarCheck.expected.realIncome,1500,'salary appears exactly once');
   assert(calendarCheck.display.includes(new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(1500)),'calendar displays registered income');
-  await page.locator('[data-route="planning"]').click();
+  await navigate(page,'planning');
   await page.locator('[data-plan-open="planning-detail"]').click();
   assert.equal(await page.locator('#planning').evaluate(el=>el.classList.contains('active')),true,'financial plan route');
   assert.equal(errors.length,0,'uncaught page errors: '+errors.join('; '));
