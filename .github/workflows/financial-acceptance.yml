@@ -5,8 +5,12 @@ on:
     paths:
       - 'finance-core-v14.js'
       - 'salvia-patrimonio-v052.html'
-      - 'tests/acceptance-finance.cjs'
+      - 'tests/**'
       - '.github/workflows/financial-acceptance.yml'
+      - 'index.html'
+      - 'navigation-v06.js'
+      - 'expenses-v01.js'
+      - 'accounts-v041-shell.js'
   pull_request:
     paths:
       - 'finance-core-v14.js'
@@ -25,3 +29,19 @@ jobs:
           node-version: '22'
       - name: Verify financial core and patrimonio bridge
         run: node tests/acceptance-finance.cjs
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start local application
+        run: python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/salvia-http.log 2>&1 &
+      - name: Test desktop and mobile browser flows
+        run: node tests/browser-acceptance.cjs
