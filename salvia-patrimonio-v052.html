@@ -4,7 +4,7 @@
 'use strict';
 
 function sv41FromCanonical(c){
-const accounts=(c.accounts||[]).map(a=>({id:a.id,name:a.name,type:a.kind==='cash'?'cash':a.kind==='remunerated'?'remunerated':'bank',role:a.salviaRole||'other',opening:Number(a.opening??a.balance??0),closedAt:a.closedAt||null,archivedAt:a.salviaArchivedAt||null}));
+const accounts=(c.accounts||[]).map(a=>({id:a.id,name:a.name,type:a.kind==='cash'?'cash':(a.kind==='savings'||a.kind==='remunerated')?'remunerated':'bank',role:a.salviaRole||'other',opening:Number(a.opening??a.balance??0),closedAt:a.closedAt||null,archivedAt:a.salviaArchivedAt||null}));
 const sources=(c.incomeSources||[]).map(s=>s.v41Data?structuredClone(s.v41Data):({id:s.id,name:s.name,category:({rent:'rental',activity:'business'}[s.kind]||s.kind||'other'),account:s.accountId||accounts[0]?.id||'',start:s.start||'2026-01-01',frequency:s.frequency==='once'?'irregular':s.frequency||'monthly',day:s.day||1,amount:Number(s.amount)||0,mode:'fixed',extra:{pays:Number(s.payouts)||12,special:(s.specialPayments||[]).map(p=>({...p}))},revisions:[]}));
 const receipts=[],expenses=[],transfers=[];
 for(const t of c.tx||[]){
@@ -17,7 +17,7 @@ return {schema:40,accounts,sources,receipts,expenses,transfers,suppressedOccurre
 function sv41ToCanonical(s){
 const api=window.parent?.salviaStore;if(!api)return;
 const c=api.get(),ac=new Map((c.accounts||[]).map(x=>[x.id,x]));
-c.accounts=s.accounts.map(a=>({...ac.get(a.id),id:a.id,name:a.name,kind:a.type==='cash'?'cash':a.type==='remunerated'?'remunerated':(ac.get(a.id)?.kind==='cash'?'bank':ac.get(a.id)?.kind||'bank'),salviaRole:a.role||'other',opening:Number(a.opening)||0,closedAt:a.closedAt||null,salviaArchivedAt:a.archivedAt||null}));
+c.accounts=s.accounts.map(a=>({...ac.get(a.id),id:a.id,name:a.name,kind:a.type==='cash'?'cash':a.type==='remunerated'?'savings':(ac.get(a.id)?.kind==='cash'?'bank':ac.get(a.id)?.kind||'bank'),salviaRole:a.role||'other',opening:Number(a.opening)||0,closedAt:a.closedAt||null,salviaArchivedAt:a.archivedAt||null}));
 const sc=new Map((c.incomeSources||[]).map(x=>[x.id,x]));
 c.incomeSources=s.sources.map(x=>({...sc.get(x.id),id:x.id,name:x.name,kind:({rental:'rent',business:'activity'}[x.category]||x.category),amount:Number(x.amount)||0,frequency:x.frequency==='irregular'?'once':x.frequency,accountId:x.account,payouts:String(x.extra?.pays||12),day:x.day,specialPayments:x.extra?.special||[],v41Data:structuredClone(x)}));
 const old=new Map((c.tx||[]).map(x=>[x.id,x]));
