@@ -11,6 +11,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(BASE,{waitUntil:'domcontentloaded'});
   await page.waitForSelector('[data-route="movements"]');
+  await page.waitForFunction(()=>Boolean(window.salviaStore?.get&&window.SalviaFinance?.forecastMonth));
   await page.evaluate(()=>{
     const now=new Date(),month=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'),date=month+'-05';
     const d=window.salviaStore.get();
@@ -41,7 +42,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await page.locator('[data-route="accounts"]').click();
   const frame=page.frameLocator('#salvia-v041-frame');
   await frame.locator('body').waitFor();
-  await page.waitForFunction(()=>{const w=document.getElementById('salvia-v041-frame')?.contentWindow;return Boolean(w?.document?.body?.textContent?.includes('Patrimonio'))},{timeout:12000});
+  await page.waitForFunction(()=>{const w=document.getElementById('salvia-v041-frame')?.contentWindow;return Boolean(w?.document?.body?.textContent?.includes('Patrimonio'))},null,{timeout:12000});
   const bridgeState=await page.evaluate(()=>({main:window.salviaStore.get(),iframeLoaded:!!document.getElementById('salvia-v041-frame').contentWindow.document.querySelector('body')}));
   assert.equal(bridgeState.main.accounts.find(a=>a.id==='saving').kind,'savings','remunerated account survives bridge');
   assert.equal(bridgeState.main.tx.some(t=>t.id==='rent'),false,'cancelled expense remains absent from main ledger');
