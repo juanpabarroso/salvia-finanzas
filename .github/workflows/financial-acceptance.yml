@@ -15,12 +15,16 @@ on:
     paths:
       - 'finance-core-v14.js'
       - 'salvia-patrimonio-v052.html'
-      - 'tests/acceptance-finance.cjs'
+      - 'tests/**'
+      - 'index.html'
+      - 'navigation-v06.js'
+      - 'expenses-v01.js'
+      - 'accounts-v041-shell.js'
       - '.github/workflows/financial-acceptance.yml'
   workflow_dispatch:
 jobs:
   financial-acceptance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +34,7 @@ jobs:
       - name: Verify financial core and patrimonio bridge
         run: node tests/acceptance-finance.cjs
   browser-acceptance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
