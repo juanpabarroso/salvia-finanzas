@@ -50,8 +50,9 @@ const projection=Array.from({length:horizon},(_,i)=>{
  const month=shift(todayMonth,i),year=Number(month.slice(0,4)),m=Number(month.slice(5,7));
  const forecast=core.forecastMonth?.(state,year,m,{includeScheduledIncome:true});
  const pending=(forecast?.pending||[]).filter(e=>e.date>=todayDay);
- const obligations=pending.filter(e=>e.kind==='expense'&&['recurring','debt','planned'].includes(e.source));
- const income=pending.filter(e=>e.kind==='income'&&e.source==='scheduled');
+ const futureRecorded=futureTx.filter(t=>t.date.slice(0,7)===month);
+ const obligations=pending.filter(e=>e.kind==='expense'&&['recurring','debt','planned'].includes(e.source)).concat(futureRecorded.filter(t=>t.type==='expense').map(t=>({date:t.date,amount:t.amount,concept:t.concept||'Gasto con fecha futura',source:'future_recorded'})));
+ const income=pending.filter(e=>e.kind==='income'&&e.source==='scheduled').concat(futureRecorded.filter(t=>t.type==='income').map(t=>({date:t.date,amount:t.amount,concept:t.concept||'Ingreso con fecha futura',source:'future_recorded'})));
  return{month,knownCommitments:round(obligations.reduce((a,e)=>a+e.amount,0)),scheduledIncome:round(income.reduce((a,e)=>a+e.amount,0)),commitmentCount:obligations.length,scheduledIncomeCount:income.length,obligations:obligations.map(e=>({date:e.date,amount:e.amount,concept:e.concept,source:e.source}))};
 });
 const totalCommitments=round(projection.reduce((a,r)=>a+r.knownCommitments,0));
@@ -65,7 +66,7 @@ const capacity={
  horizonMonths:horizon,projection,totalKnownCommitments:validBalances.length?totalCommitments:null,
  afterHorizonCommitments:validBalances.length?available:null,scheduledIncome:validBalances.length?scheduledIncome:null,
  asOf:today,knownPending:projection[0].obligations,
- limitations:'Saldo calculado hasta la fecha seleccionada, excluyendo movimientos posteriores. Los compromisos solo incluyen obligaciones identificadas. No incluye gastos variables, cuotas sin configurar ni restricciones de liquidez; no equivale a dinero libre.'
+ limitations:'Saldo calculado hasta la fecha seleccionada, excluyendo movimientos posteriores. Los compromisos incluyen obligaciones identificadas y gastos con fecha futura registrados. No incluye gastos variables, cuotas sin configurar ni restricciones de liquidez; no equivale a dinero libre.'
 };
 // Historical expense proxy is a scenario, not an obligation: it excludes recorded linked
 // installments and annual payments, which are already handled separately where configured.
