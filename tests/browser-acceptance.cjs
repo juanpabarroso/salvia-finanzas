@@ -57,6 +57,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   assert(await page.evaluate(()=>Boolean(window.salviaAnalysisSnapshot?.().classification)),'analysis engine connected to dashboard');
   assert(await page.evaluate(()=>Boolean(window.salviaAnalysisSnapshot?.().capacity)),'commitment-aware cash estimate available');
   assert.equal(await page.locator('#an-capacity').count(),1,'capacity explanation visible in analytics');
+  await page.locator('#an-horizon').selectOption('12');
+  assert.equal(await page.evaluate(()=>window.salviaAnalysisSnapshot().capacity.projection.length),12,'12-month commitment horizon updates analysis');
   await navigate(page,'advisor');
   assert.equal(await page.locator('#s-add').count(),0,'legacy add operation hidden in advisor');
   await navigate(page,'planning');
