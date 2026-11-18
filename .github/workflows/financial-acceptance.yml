@@ -32,7 +32,9 @@ jobs:
         with:
           node-version: '22'
       - name: Verify financial core and patrimonio bridge
-        run: node tests/acceptance-finance.cjs
+        run: |
+          node tests/acceptance-finance.cjs
+          node tests/acceptance-analysis.cjs
   browser-acceptance:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
