@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict'),path=require('node:path');
+const finance=require(path.join(__dirname,'..','finance-core-v14.js'));
+const engine=require(path.join(__dirname,'..','analysis-engine-v01.js'));
+const tx=[{id:'a',type:'income',date:'2026-01-02',amount:2000,to:'bank'},{id:'b',type:'expense',date:'2026-01-04',amount:400,from:'bank',category:'Vivienda'},{id:'c',type:'transfer',date:'2026-01-05',amount:900,from:'bank',to:'save'},{id:'d',type:'income',date:'2026-02-02',amount:2000,to:'bank'},{id:'e',type:'expense',date:'2026-02-04',amount:600,from:'bank',category:'Vivienda'},{id:'f',type:'income',date:'2026-03-02',amount:2000,to:'bank'},{id:'g',type:'expense',date:'2026-03-04',amount:700,from:'bank',category:'Alimentación'}];
+const state={accounts:[{id:'bank',kind:'bank',opening:3000},{id:'save',kind:'savings',opening:0}],tx,recurring:[],debts:[]};
+const a=engine.analyze(state,{end:'2026-03',count:3,today:'2026-04-01'},finance);
+assert.equal(a.totals.income,6000);assert.equal(a.totals.expense,1700);assert.equal(a.totals.net,4300);
+assert.equal(a.rows[0].expense,400);assert.equal(a.categories[0].name,'Vivienda');assert.equal(a.period.monthsWithActivity,3);
+assert(a.signals.some(s=>s.code==='expense_change'));assert(!a.signals.some(s=>s.code==='partial_period'));
+const partial=engine.analyze(state,{end:'2026-03',count:3,today:'2026-03-10'},finance);assert(partial.signals.some(s=>s.code==='partial_period'));
+const empty=engine.analyze({...state,tx:[]},{end:'2026-03',count:3,today:'2026-04-01'},finance);assert(empty.signals.some(s=>s.code==='no_data'));assert.equal(empty.totals.net,0);
+const duplicate={...state,tx:[...tx,{...tx[1],id:'duplicate',salviaExpenseOccurrence:'rec:jan'},{...tx[1],id:'duplicate2',salviaExpenseOccurrence:'rec:jan'}]};const d=engine.analyze(duplicate,{end:'2026-03',count:3,today:'2026-04-01'},finance);assert(d.quality.warnings.some(w=>w.code==='duplicate_occurrence'));assert(d.signals.some(s=>s.code==='data_quality'));
+assert.throws(()=>engine.analyze(state,{end:'2026-13',count:3},finance),/inválido/);
+console.log('PASS: analysis totals, transfers excluded, categories, trends, partial months, sparse data, reconciliation warnings and invalid periods');
