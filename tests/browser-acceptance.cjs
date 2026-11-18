@@ -55,6 +55,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await navigate(page,'analytics');
   assert.equal(await page.locator('#s-add').count(),0,'legacy add operation hidden in analysis');
   assert(await page.evaluate(()=>Boolean(window.salviaAnalysisSnapshot?.().classification)),'analysis engine connected to dashboard');
+  assert(await page.evaluate(()=>Boolean(window.salviaAnalysisSnapshot?.().capacity)),'commitment-aware cash estimate available');
+  assert.equal(await page.locator('#an-capacity').count(),1,'capacity explanation visible in analytics');
   await navigate(page,'advisor');
   assert.equal(await page.locator('#s-add').count(),0,'legacy add operation hidden in advisor');
   await navigate(page,'planning');
