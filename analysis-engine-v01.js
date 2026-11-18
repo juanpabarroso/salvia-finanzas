@@ -38,8 +38,12 @@ const unlinkedRecurringCandidates=[...candidates].flatMap(([key,list])=>{const b
 if(unlinkedRecurringCandidates.length)signal('unlinked_recurring_candidates','info','Posibles gastos habituales sin vincular','Se han encontrado patrones repetidos que conviene revisar. No se crearán cuotas automáticamente.',{count:unlinkedRecurringCandidates.length});
 const todayMonth=today.slice(0,7),todayDay=today;
 const balances=core.cashBalances?.(state)||[];
+const activeAccounts=(state?.accounts||[]).filter(a=>a.kind!=='investment'&&!a.closedAt&&!a.salviaArchivedAt);
+const accountIds=new Set(activeAccounts.map(a=>a.id));
+const futureTx=tx.filter(t=>t.date>todayDay);
+const futureDelta=futureTx.reduce((v,t)=>v+(accountIds.has(t.accountTo)?t.amount:0)-(accountIds.has(t.accountFrom)?t.amount:0),0);
 const validBalances=balances.filter(x=>Number.isFinite(x.balance));
-const liquid=validBalances.reduce((a,x)=>a+x.balance,0);
+const liquid=round(validBalances.reduce((a,x)=>a+x.balance,0)-futureDelta);
 const horizon=Number(opts.horizon||3);
 if(![3,6,12].includes(horizon))throw Error('Horizonte inválido');
 const projection=Array.from({length:horizon},(_,i)=>{
@@ -55,24 +59,39 @@ const scheduledIncome=round(projection.reduce((a,r)=>a+r.scheduledIncome,0));
 const available=round(liquid-totalCommitments);
 const capacity={
  status:validBalances.length?'partial_estimate':'insufficient_data',
- liquidBalance:validBalances.length?round(liquid):null,
+ liquidBalance:validBalances.length?liquid:null,
  committedPayments:validBalances.length?projection[0].knownCommitments:null,
  afterKnownCommitments:validBalances.length?round(liquid-projection[0].knownCommitments):null,
  horizonMonths:horizon,projection,totalKnownCommitments:validBalances.length?totalCommitments:null,
  afterHorizonCommitments:validBalances.length?available:null,scheduledIncome:validBalances.length?scheduledIncome:null,
  asOf:today,knownPending:projection[0].obligations,
- limitations:'El saldo procede de cuentas registradas. Los compromisos solo incluyen cuotas, deudas y pagos planificados identificados en los meses seleccionados. No se consideran pagos ya vencidos, ingresos no programados, gastos variables, pagos no registrados ni restricciones de liquidez. No es dinero libre certificado.'
+ limitations:'Saldo calculado hasta la fecha seleccionada, excluyendo movimientos posteriores. Los compromisos solo incluyen obligaciones identificadas. No incluye gastos variables, cuotas sin configurar ni restricciones de liquidez; no equivale a dinero libre.'
 };
+// Historical expense proxy is a scenario, not an obligation: it excludes recorded linked
+// installments and annual payments, which are already handled separately where configured.
 const historical=rows.filter(r=>r.month<todayMonth&&r.hasData);
-const historicNet=historical.map(r=>r.net);
+const historicalExpense=historical.map(r=>({month:r.month,ordinaryExpense:classified.find(c=>c.month===r.month).ordinaryExpense,unlinked:classifiedRecurring.find(c=>c.month===r.month).potentialOneOffExpense}));
+const expenseSample=historicalExpense.filter(r=>r.ordinaryExpense>0);
+const median=values=>{const a=[...values].sort((x,y)=>x-y),i=Math.floor(a.length/2);return a.length%2?a[i]:(a[i-1]+a[i])/2};
+const variableBaseline=expenseSample.length>=3?round(median(expenseSample.map(r=>r.unlinked))):null;
+const variableProjection=variableBaseline===null?null:projection.map(r=>({month:r.month,low:round(variableBaseline*.8),central:variableBaseline,high:round(variableBaseline*1.2)}));
+const historicalNet=historical.map(r=>r.net);
 const savingsForecast={
- status:'insufficient_data',amount:null,monthlyAverage:null,reason:'No existe una previsión fiable de ahorro: los ingresos futuros y gastos variables pueden no estar configurados.',
- historicalMonthlyAverage:historical.length>=3?round(historicNet.reduce((a,v)=>a+v,0)/historicNet.length):null,
+ status:variableBaseline===null?'insufficient_data':'illustrative_only',amount:null,monthlyAverage:null,
+ reason:variableBaseline===null?'Se necesitan al menos tres meses con gastos registrados para estimar gastos variables.':'Se ha estimado un gasto variable de referencia a partir de la mediana histórica. No se puede certificar ahorro futuro sin verificar ingresos y gastos completos.',
+ variableExpenseBaseline:variableBaseline,variableProjection,
+ scenarios:variableBaseline===null?null:{
+ conservative:round(scheduledIncome-totalCommitments-variableBaseline*horizon*1.2),
+ central:round(scheduledIncome-totalCommitments-variableBaseline*horizon),
+ optimistic:round(scheduledIncome-totalCommitments-variableBaseline*horizon*.8)
+ },
+ historicalMonthlyAverage:historical.length>=3?round(historicalNet.reduce((a,v)=>a+v,0)/historicalNet.length):null,
  historicalMonths:historical.length,
  conditionalNetFromScheduled:round(scheduledIncome-totalCommitments),
- disclaimer:'El resultado condicionado de cobros programados menos compromisos no es una capacidad de ahorro prevista: faltan gastos variables y posibles ingresos no programados.'
+ disclaimer:'Escenarios condicionados a ingresos explícitamente programados, cuotas conocidas y gastos variables históricos. No representan ahorro disponible ni garantizado; si faltan nóminas programadas, los escenarios pueden ser negativos pese a tener ingresos habituales.'
 };
 if(capacity.status==='partial_estimate'&&available<0)signal('known_commitments_exceed_cash','warning','Compromisos conocidos superiores al saldo registrado','Los pagos identificados en el horizonte seleccionado superan el saldo actual sin contar futuros ingresos. Verifica saldos y obligaciones.',{liquid:capacity.liquidBalance,committed:totalCommitments,horizonMonths:horizon,shortfall:round(-available)});
+if(variableBaseline!==null)signal('variable_expense_baseline','info','Referencia de gastos no vinculados','Estimación orientativa a partir de meses anteriores; no es una obligación futura ni incluye necesariamente todos los gastos.',{monthlyMedian:variableBaseline,sampleMonths:expenseSample.length});
 if(complete.length>=2){const prev=complete.at(-2),last=complete.at(-1),p=classified.find(r=>r.month===prev.month),c=classified.find(r=>r.month===last.month);
 if(prev.expense>0){const change=round((last.expense-prev.expense)/prev.expense*100),ordinaryChange=p.ordinaryExpense>0?round((c.ordinaryExpense-p.ordinaryExpense)/p.ordinaryExpense*100):null;
 if(Math.abs(change)>=15){if(ordinaryChange!==null&&Math.abs(ordinaryChange)<15&&p.annualExpenses+c.annualExpenses>0)signal('annual_expense_effect','info','Variación influida por gastos anuales','El cambio del gasto total se explica en parte por pagos clasificados como anuales; no se interpreta como aumento habitual.',{from:prev.month,to:last.month,totalPercent:change,ordinaryPercent:ordinaryChange,annualExpensesPrevious:p.annualExpenses,annualExpensesCurrent:c.annualExpenses});
@@ -83,6 +102,6 @@ else if(Math.abs(change)>=20)signal('income_change','info','Variación de ingres
 if(classified.some(r=>r.extraordinaryIncome>0))signal('extraordinary_income_detected','info','Cobros extraordinarios identificados','Estos cobros se muestran separados en el análisis y no se consideran automáticamente ingresos mensuales recurrentes.',{months:classified.filter(r=>r.extraordinaryIncome>0).map(r=>({month:r.month,amount:r.extraordinaryIncome}))});
 if(classified.some(r=>r.annualExpenses>0))signal('annual_expense_detected','info','Pagos anuales identificados','Un pago anual registrado no implica que se repita cada mes. Se muestra su impacto sin inventar próximos vencimientos.',{months:classified.filter(r=>r.annualExpenses>0).map(r=>({month:r.month,amount:r.annualExpenses}))});
 const recurringCount=tx.filter(t=>t.type==='expense'&&t.date.slice(0,7)>=start&&t.date.slice(0,7)<=end&&t.origin==='recurring').length;
-return{version:5,unlinkedRecurringCandidates,capacity,savingsForecast,classification:classified,recurrence:classifiedRecurring,stability:{income:incomeStability,expense:expenseStability},period:{start,end,count,monthsWithActivity:coverage,completeMonthsWithActivity:complete.length},rows,totals,categories:ranked,signals,quality:{warnings:report.warnings,transactions:tx.length,recurringExpenseTransactions:recurringCount,limitedCoverage:coverage<Math.min(3,count)},methodology:'Solo movimientos registrados normalizados; traspasos excluidos. Recurrencia confirmada solo mediante vínculos de movimientos a obligaciones; otros gastos no se presumen puntuales. Clasificación de extras y pagos anuales basada en etiquetas o marcas explícitas: es orientativa, no una confirmación. Mes anterior al actual no implica registro completo. Sin estimaciones ni rentabilidad implícita.'}}
+return{version:6,unlinkedRecurringCandidates,capacity,savingsForecast,classification:classified,recurrence:classifiedRecurring,stability:{income:incomeStability,expense:expenseStability},period:{start,end,count,monthsWithActivity:coverage,completeMonthsWithActivity:complete.length},rows,totals,categories:ranked,signals,quality:{warnings:report.warnings,transactions:tx.length,recurringExpenseTransactions:recurringCount,limitedCoverage:coverage<Math.min(3,count)},methodology:'Solo movimientos registrados normalizados; traspasos excluidos. Recurrencia confirmada solo mediante vínculos de movimientos a obligaciones; otros gastos no se presumen puntuales. Clasificación de extras y pagos anuales basada en etiquetas o marcas explícitas: es orientativa, no una confirmación. Mes anterior al actual no implica registro completo. Sin estimaciones ni rentabilidad implícita.'}}
 return{analyze,shift,monthOK};
 });
