@@ -24,4 +24,11 @@ assert(!normalReport.signals.some(x=>x.code==='expense_change'),'no material exp
 const inProgress=engine.analyze(special,{end:'2026-03',count:3,today:'2026-03-15'},finance);
 assert(inProgress.signals.some(x=>x.code==='partial_period'));
 assert(!inProgress.signals.some(x=>x.code==='expense_change'&&x.evidence.to==='2026-03'));
+const recurring={...state,tx:[...tx,{id:'linked',type:'expense',date:'2026-03-08',amount:150,salviaRecurringId:'gym',category:'Gimnasio'}],recurring:[{id:'gym',amount:150,frequency:'monthly',start:'2026-03-01'}]};
+const recurringResult=engine.analyze(recurring,{end:'2026-03',count:3,today:'2026-04-01'},finance);
+assert.equal(recurringResult.recurrence.find(r=>r.month==='2026-03').linkedRecurringExpense,150);
+assert.equal(recurringResult.recurrence.find(r=>r.month==='2026-03').otherRegisteredExpense,700);
+assert.equal(recurringResult.stability.income.status,'low_variation');
+assert.equal(recurringResult.stability.expense.status,'high_variation');
+assert.equal(engine.analyze(state,{end:'2026-03',count:3,today:'2026-03-10'},finance).stability.income.status,'insufficient_data');
 console.log('PASS: analysis totals, transfers excluded, categories, trends, partial months, sparse data, reconciliation warnings and invalid periods');
