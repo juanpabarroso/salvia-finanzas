@@ -65,4 +65,12 @@ const futureState={accounts:[{id:'bank',kind:'bank',opening:1000}],tx:[{id:'futu
 const asOf=engine.analyze(futureState,{end:'2026-03',count:3,today:'2026-03-10'},finance);
 assert.equal(asOf.capacity.liquidBalance,1000,'future posted transaction must not reduce current cash');
 assert.equal(asOf.capacity.totalKnownCommitments,300,'future dated expense must be reserved exactly once');
+const overdueCase={accounts:[{id:'bank',kind:'bank',opening:500}],tx:[],recurring:[{id:'rent',concept:'Alquiler',amount:400,frequency:'monthly',due:'2026-01-05'}],debts:[]};
+const overdueReport=engine.analyze(overdueCase,{end:'2026-03',count:3,today:'2026-03-10'},finance);
+assert.equal(overdueReport.capacity.unreconciledDueTotal,1200,'three unpaid-looking occurrences require reconciliation');
+assert.equal(overdueReport.capacity.committedPayments,0,'past due payments must not be double debited');
+assert(overdueReport.signals.some(x=>x.code==='unreconciled_due_payments'));
+const paidCase={...overdueCase,tx:[{id:'rent-mar',type:'expense',date:'2026-03-05',amount:400,from:'bank',salviaRecurringId:'rent'}]};
+const paidReport=engine.analyze(paidCase,{end:'2026-03',count:3,today:'2026-03-10'},finance);
+assert.equal(paidReport.capacity.unreconciledDueTotal,800,'matched payment removes current month from reconciliation candidates');
 console.log('PASS: analysis totals, transfers excluded, categories, trends, partial months, sparse data, reconciliation warnings and invalid periods');
