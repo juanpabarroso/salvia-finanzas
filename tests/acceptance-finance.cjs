@@ -34,7 +34,13 @@ assert.equal(december.pending.some(x=>x.concept.includes('Familiar')),false);
 const sameDay=copy(data);sameDay.recurring.push({id:'other',concept:'Otro pago',due:'2026-01-05',frequency:'monthly',amount:760});assert.equal(finance.forecastMonth(sameDay,2026,12).pendingExpense,1560);
 const dup=copy(data);dup.tx.push({...dup.tx.find(t=>t.id==='mort-nov'),id:'duplicate'});assert(finance.reconciliationReport(dup).warnings.some(x=>x.code==='duplicate_occurrence'));assert.equal(finance.forecastMonth(dup,2026,11).realExpense,740);
 for(const payout of [12,17]){const result=finance.monthlyPlan(data,{start:'2027-01',cash:3000,annual:20400,payout,extraMonths:[3,6,6,7,11]});assert(Math.abs(result.rows.reduce((sum,row)=>sum+row.income,0)-20400)<0.01)}
-const partial=finance.monthlyPlan(data,{start:'2026-11',cash:3000,annual:20400,payout:12});assert.equal(partial.rows[0].income,1200);assert.equal(partial.rows[0].partialIncomeRisk,true);
+const partial=finance.monthlyPlan(data,{start:'2026-11',cash:3000,annual:20400,payout:12});assert.equal(partial.rows[0].registeredIncome,1200);assert.equal(partial.rows[0].income,1700);assert.equal(partial.rows[0].incomeEstimated,true);assert.equal(partial.rows[0].partialIncomeRisk,true);
+const interestOnly={accounts:[{id:'bank',name:'Cuenta',kind:'bank',opening:1000}],tx:[{id:'interest',type:'income',date:'2026-12-05',amount:3,to:'bank',concept:'Intereses'}],recurring:[],debts:[]};
+const interestPlan=finance.monthlyPlan(interestOnly,{start:'2026-12',cash:1000,annual:24000,payout:12,months:1});
+assert.equal(interestPlan.rows[0].income,2000,'small interest cannot replace expected salary');
+assert.equal(interestPlan.rows[0].registeredIncome,3);
+assert.equal(interestPlan.rows[0].incomeEstimated,true);
+assert.equal(interestPlan.rows[0].cash,3000,'cash forecast uses estimated salary, not only interest');
 const cancelled=copy(data);cancelled.tx=cancelled.tx.filter(t=>t.id!=='mort-nov');cancelled.salviaSuppressedDebtOccurrences.push('mort:2026-11');assert.equal(finance.forecastMonth(cancelled,2026,11).pending.some(x=>x.source==='debt'),false);
 // Repeated bridge writes must preserve corrected movements and suppression markers.
 const corrected=copy(data);
