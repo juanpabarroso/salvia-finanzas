@@ -52,7 +52,14 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   assert.equal(bridgeState.main.accounts.find(a=>a.id==='saving').kind,'savings','remunerated account survives bridge');
   assert.equal(bridgeState.main.tx.some(t=>t.id==='rent'),false,'cancelled expense remains absent from main ledger');
   assert(bridgeState.iframeLoaded,'patrimonio frame loaded');
+  await navigate(page,'analytics');
+  assert.equal(await page.locator('#s-add').isVisible(),false,'legacy add operation hidden in analysis');
+  assert(await page.evaluate(()=>Boolean(window.salviaAnalysisSnapshot?.().classification)),'analysis engine connected to dashboard');
+  await navigate(page,'advisor');
+  assert.equal(await page.locator('#s-add').isVisible(),false,'legacy add operation hidden in advisor');
   await navigate(page,'planning');
+  assert.equal(await page.locator('#s-add').isVisible(),false,'legacy add operation hidden in planning');
+
   await page.locator('[data-plan-open="calendar"]').click();
   assert.equal(await page.locator('#calendar').evaluate(el=>el.classList.contains('active')),true,'calendar route');
   const calendarCheck=await page.evaluate(()=>{const m=new Date(),period=m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');document.getElementById('calMonth').value=period;document.getElementById('calMonth').dispatchEvent(new Event('change',{bubbles:true}));return {expected:window.SalviaFinance.forecastMonth(window.salviaStore.get(),m.getFullYear(),m.getMonth()+1),display:document.getElementById('calStats').textContent}});
