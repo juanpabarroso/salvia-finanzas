@@ -44,6 +44,16 @@ const capacity=engine.analyze(commitments,{end:'2026-03',count:3,today:'2026-03-
 assert.equal(capacity.liquidBalance,1000);
 assert.equal(capacity.committedPayments,40);
 assert.equal(capacity.afterKnownCommitments,960);
+assert.equal(capacity.totalKnownCommitments,120);
+assert.equal(capacity.afterHorizonCommitments,880);
+assert.equal(capacity.projection.length,3);
 const afterDue=engine.analyze(commitments,{end:'2026-03',count:3,today:'2026-03-25'},finance).capacity;
 assert.equal(afterDue.committedPayments,0,'past due obligations not counted as future cash reservations');
+assert.equal(afterDue.totalKnownCommitments,80,'future months still count after this month due date');
+const twelve=engine.analyze(commitments,{end:'2026-03',count:3,today:'2026-03-10',horizon:12},finance);
+assert.equal(twelve.capacity.totalKnownCommitments,480);
+assert.equal(twelve.capacity.projection.length,12);
+assert.equal(twelve.savingsForecast.status,'insufficient_data');
+assert.equal(twelve.savingsForecast.amount,null);
+assert.throws(()=>engine.analyze(commitments,{end:'2026-03',count:3,today:'2026-03-10',horizon:5},finance),/Horizonte/);
 console.log('PASS: analysis totals, transfers excluded, categories, trends, partial months, sparse data, reconciliation warnings and invalid periods');
