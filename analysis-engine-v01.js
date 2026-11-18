@@ -55,6 +55,16 @@ const projection=Array.from({length:horizon},(_,i)=>{
  const income=pending.filter(e=>e.kind==='income'&&e.source==='scheduled').concat(futureRecorded.filter(t=>t.type==='income').map(t=>({date:t.date,amount:t.amount,concept:t.concept||'Ingreso con fecha futura',source:'future_recorded'})));
  return{month,knownCommitments:round(obligations.reduce((a,e)=>a+e.amount,0)),scheduledIncome:round(income.reduce((a,e)=>a+e.amount,0)),commitmentCount:obligations.length,scheduledIncomeCount:income.length,obligations:obligations.map(e=>({date:e.date,amount:e.amount,concept:e.concept,source:e.source}))};
 });
+// Past-due entries are verification prompts, not proof of non-payment.
+const overdueCandidates=[];
+for(let offset=-3;offset<=0;offset++){
+ const month=shift(todayMonth,offset),y=Number(month.slice(0,4)),m=Number(month.slice(5,7));
+ const report=core.forecastMonth?.(state,y,m,{includeScheduledIncome:false});
+ for(const e of report?.pending||[])if(e.kind==='expense'&&e.date<todayDay&&['recurring','debt','planned'].includes(e.source)){
+  overdueCandidates.push({date:e.date,amount:e.amount,concept:e.concept,source:e.source,sourceKey:e.sourceKey});
+ }
+}
+if(overdueCandidates.length)signal('unreconciled_due_payments','warning','Pagos vencidos sin conciliar','Hay vencimientos anteriores a hoy sin movimiento vinculado. Pueden estar pagados manualmente: compruébalos antes de considerarlos deuda impagada.',{count:overdueCandidates.length,amount:round(overdueCandidates.reduce((a,e)=>a+e.amount,0))});
 const totalCommitments=round(projection.reduce((a,r)=>a+r.knownCommitments,0));
 const scheduledIncome=round(projection.reduce((a,r)=>a+r.scheduledIncome,0));
 const available=round(liquid-totalCommitments);
@@ -63,7 +73,7 @@ const capacity={
  liquidBalance:validBalances.length?liquid:null,
  committedPayments:validBalances.length?projection[0].knownCommitments:null,
  afterKnownCommitments:validBalances.length?round(liquid-projection[0].knownCommitments):null,
- horizonMonths:horizon,projection,totalKnownCommitments:validBalances.length?totalCommitments:null,
+ horizonMonths:horizon,projection,overdueCandidates,unreconciledDueTotal:round(overdueCandidates.reduce((a,e)=>a+e.amount,0)),totalKnownCommitments:validBalances.length?totalCommitments:null,
  afterHorizonCommitments:validBalances.length?available:null,scheduledIncome:validBalances.length?scheduledIncome:null,
  asOf:today,knownPending:projection[0].obligations,
  limitations:'Saldo calculado hasta la fecha seleccionada, excluyendo movimientos posteriores. Los compromisos incluyen obligaciones identificadas y gastos con fecha futura registrados. No incluye gastos variables, cuotas sin configurar ni restricciones de liquidez; no equivale a dinero libre.'
@@ -103,6 +113,6 @@ else if(Math.abs(change)>=20)signal('income_change','info','Variación de ingres
 if(classified.some(r=>r.extraordinaryIncome>0))signal('extraordinary_income_detected','info','Cobros extraordinarios identificados','Estos cobros se muestran separados en el análisis y no se consideran automáticamente ingresos mensuales recurrentes.',{months:classified.filter(r=>r.extraordinaryIncome>0).map(r=>({month:r.month,amount:r.extraordinaryIncome}))});
 if(classified.some(r=>r.annualExpenses>0))signal('annual_expense_detected','info','Pagos anuales identificados','Un pago anual registrado no implica que se repita cada mes. Se muestra su impacto sin inventar próximos vencimientos.',{months:classified.filter(r=>r.annualExpenses>0).map(r=>({month:r.month,amount:r.annualExpenses}))});
 const recurringCount=tx.filter(t=>t.type==='expense'&&t.date.slice(0,7)>=start&&t.date.slice(0,7)<=end&&t.origin==='recurring').length;
-return{version:6,unlinkedRecurringCandidates,capacity,savingsForecast,classification:classified,recurrence:classifiedRecurring,stability:{income:incomeStability,expense:expenseStability},period:{start,end,count,monthsWithActivity:coverage,completeMonthsWithActivity:complete.length},rows,totals,categories:ranked,signals,quality:{warnings:report.warnings,transactions:tx.length,recurringExpenseTransactions:recurringCount,limitedCoverage:coverage<Math.min(3,count)},methodology:'Solo movimientos registrados normalizados; traspasos excluidos. Recurrencia confirmada solo mediante vínculos de movimientos a obligaciones; otros gastos no se presumen puntuales. Clasificación de extras y pagos anuales basada en etiquetas o marcas explícitas: es orientativa, no una confirmación. Mes anterior al actual no implica registro completo. Sin estimaciones ni rentabilidad implícita.'}}
+return{version:7,unlinkedRecurringCandidates,capacity,savingsForecast,classification:classified,recurrence:classifiedRecurring,stability:{income:incomeStability,expense:expenseStability},period:{start,end,count,monthsWithActivity:coverage,completeMonthsWithActivity:complete.length},rows,totals,categories:ranked,signals,quality:{warnings:report.warnings,transactions:tx.length,recurringExpenseTransactions:recurringCount,limitedCoverage:coverage<Math.min(3,count)},methodology:'Solo movimientos registrados normalizados; traspasos excluidos. Recurrencia confirmada solo mediante vínculos de movimientos a obligaciones; otros gastos no se presumen puntuales. Clasificación de extras y pagos anuales basada en etiquetas o marcas explícitas: es orientativa, no una confirmación. Mes anterior al actual no implica registro completo. Sin estimaciones ni rentabilidad implícita.'}}
 return{analyze,shift,monthOK};
 });
