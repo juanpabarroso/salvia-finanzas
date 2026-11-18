@@ -53,12 +53,12 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   assert.equal(bridgeState.main.tx.some(t=>t.id==='rent'),false,'cancelled expense remains absent from main ledger');
   assert(bridgeState.iframeLoaded,'patrimonio frame loaded');
   await navigate(page,'analytics');
-  assert.equal(await page.locator('#s-add').isVisible(),false,'legacy add operation hidden in analysis');
+  assert.equal(await page.locator('#s-add').count(),0,'legacy add operation hidden in analysis');
   assert(await page.evaluate(()=>Boolean(window.salviaAnalysisSnapshot?.().classification)),'analysis engine connected to dashboard');
   await navigate(page,'advisor');
-  assert.equal(await page.locator('#s-add').isVisible(),false,'legacy add operation hidden in advisor');
+  assert.equal(await page.locator('#s-add').count(),0,'legacy add operation hidden in advisor');
   await navigate(page,'planning');
-  assert.equal(await page.locator('#s-add').isVisible(),false,'legacy add operation hidden in planning');
+  assert.equal(await page.locator('#s-add').count(),0,'legacy add operation hidden in planning');
 
   await page.locator('[data-plan-open="calendar"]').click();
   assert.equal(await page.locator('#calendar').evaluate(el=>el.classList.contains('active')),true,'calendar route');
