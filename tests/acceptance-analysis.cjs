@@ -12,4 +12,16 @@ const partial=engine.analyze(state,{end:'2026-03',count:3,today:'2026-03-10'},fi
 const empty=engine.analyze({...state,tx:[]},{end:'2026-03',count:3,today:'2026-04-01'},finance);assert(empty.signals.some(s=>s.code==='no_data'));assert.equal(empty.totals.net,0);
 const duplicate={...state,tx:[...tx,{...tx[1],id:'duplicate',salviaExpenseOccurrence:'rec:jan'},{...tx[1],id:'duplicate2',salviaExpenseOccurrence:'rec:jan'}]};const d=engine.analyze(duplicate,{end:'2026-03',count:3,today:'2026-04-01'},finance);assert(d.quality.warnings.some(w=>w.code==='duplicate_occurrence'));assert(d.signals.some(s=>s.code==='data_quality'));
 assert.throws(()=>engine.analyze(state,{end:'2026-13',count:3},finance),/inválido/);
+const special={...state,tx:[...tx,{id:'extra',type:'income',date:'2026-02-20',amount:1500,concept:'Paga extraordinaria'},{id:'annual',type:'expense',date:'2026-02-15',amount:500,concept:'Seguro anual'}]};
+const specialReport=engine.analyze(special,{end:'2026-03',count:3,today:'2026-04-01'},finance);
+assert.equal(specialReport.classification.find(x=>x.month==='2026-02').extraordinaryIncome,1500);
+assert.equal(specialReport.classification.find(x=>x.month==='2026-02').annualExpenses,500);
+assert(specialReport.signals.some(x=>x.code==='extraordinary_income_detected'));
+assert(specialReport.signals.some(x=>x.code==='annual_expense_detected'));
+const normal={...state,tx:tx.filter(t=>t.type!=='expense'||t.id!=='g').concat({id:'g2',type:'expense',date:'2026-03-04',amount:600,category:'Alimentación'})};
+const normalReport=engine.analyze(normal,{end:'2026-03',count:3,today:'2026-04-01'},finance);
+assert(!normalReport.signals.some(x=>x.code==='expense_change'),'no material expense change');
+const inProgress=engine.analyze(special,{end:'2026-03',count:3,today:'2026-03-15'},finance);
+assert(inProgress.signals.some(x=>x.code==='partial_period'));
+assert(!inProgress.signals.some(x=>x.code==='expense_change'&&x.evidence.to==='2026-03'));
 console.log('PASS: analysis totals, transfers excluded, categories, trends, partial months, sparse data, reconciliation warnings and invalid periods');
