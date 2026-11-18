@@ -64,5 +64,5 @@ assert.equal(scenario.savingsForecast.scenarios.central,-1800,'scheduled income 
 const futureState={accounts:[{id:'bank',kind:'bank',opening:1000}],tx:[{id:'future',type:'expense',date:'2026-04-15',amount:300,from:'bank'}],recurring:[],debts:[]};
 const asOf=engine.analyze(futureState,{end:'2026-03',count:3,today:'2026-03-10'},finance);
 assert.equal(asOf.capacity.liquidBalance,1000,'future posted transaction must not reduce current cash');
-assert.equal(asOf.capacity.totalKnownCommitments,0,'future manually posted transaction is not a scheduled obligation');
+assert.equal(asOf.capacity.totalKnownCommitments,300,'future dated expense must be reserved exactly once');
 console.log('PASS: analysis totals, transfers excluded, categories, trends, partial months, sparse data, reconciliation warnings and invalid periods');
